@@ -5,26 +5,28 @@ import { uuidv7 } from "uuidv7";
 import { Account } from "../../api/bank/v1/account_rbt.js";
 import { Bank } from "../../api/bank/v1/bank_rbt.js";
 
-export class BankServicer extends Bank.Servicer {
-  authorizer() {
+export const BankServicer = Bank.servicer({
+  authorizer: () => {
     return allow();
-  }
+  },
 
-  async create(
+  create: async (
     context: TransactionContext,
     state: Bank.State,
     request: Bank.CreateRequest
-  ): Promise<void> {
+  ): Promise<[Bank.State]> => {
     state.accountIdsMapId = uuidv4();
 
     await SortedMap.ref(state.accountIdsMapId).insert(context, { entries: {} });
-  }
 
-  async accountBalances(
+    return [state];
+  },
+
+  accountBalances: async (
     context: ReaderContext,
     state: Bank.State,
     request: Bank.AccountBalancesRequest
-  ): Promise<Bank.AccountBalancesResponse> {
+  ): Promise<Bank.AccountBalancesResponse> => {
     // Get the first "page" of account IDs (32 entries).
     const accountIdsMap = SortedMap.ref(state.accountIdsMapId);
 
@@ -40,13 +42,13 @@ export class BankServicer extends Bank.Servicer {
         })
       ),
     };
-  }
+  },
 
-  async signUp(
+  signUp: async (
     context: TransactionContext,
     state: Bank.State,
     { accountId, initialDeposit }: Bank.SignUpRequest
-  ): Promise<void> {
+  ): Promise<[Bank.State]> => {
     const [account] = await Account.open(context, accountId, {});
 
     await account.deposit(context, { amount: initialDeposit });
@@ -58,14 +60,18 @@ export class BankServicer extends Bank.Servicer {
         [uuidv7()]: new TextEncoder().encode(accountId),
       },
     });
-  }
 
-  async transfer(
+    return [state];
+  },
+
+  transfer: async (
     context: TransactionContext,
     state: Bank.State,
     { fromAccountId, toAccountId, amount }: Bank.TransferRequest
-  ): Promise<void> {
+  ): Promise<[Bank.State]> => {
     await Account.ref(fromAccountId).withdraw(context, { amount });
     await Account.ref(toAccountId).deposit(context, { amount });
-  }
-}
+
+    return [state];
+  },
+});
