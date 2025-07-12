@@ -47,7 +47,7 @@ test("Calling Bank.SignUp", async (t) => {
     await rbt.start();
     await rbt.up(
       new Application({
-        servicers: [...sortedMap.servicers(), BankServicer, AccountServicer],
+        servicers: [BankServicer, AccountServicer, ...sortedMap.servicers()],
       })
     );
   });
@@ -76,7 +76,7 @@ test("Test Bank Error Handling", async (t) => {
     await rbt.start();
     await rbt.up(
       new Application({
-        servicers: [...sortedMap.servicers(), BankServicer, AccountServicer],
+        servicers: [BankServicer, AccountServicer, ...sortedMap.servicers()],
       })
     );
   });

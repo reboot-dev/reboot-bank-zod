@@ -5,32 +5,33 @@ function random(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-export class AccountServicer extends Account.Servicer {
-  authorizer() {
+export const AccountServicer = Account.servicer({
+  authorizer: () => {
     return allow();
-  }
+  },
 
-  async balance(
+  balance: async (
     context: ReaderContext,
     state: Account.State,
     request: Account.BalanceRequest
-  ): Promise<Account.BalanceResponse> {
+  ): Promise<Account.BalanceResponse> => {
     return { amount: state.balance };
-  }
+  },
 
-  async deposit(
+  deposit: async (
     context: WriterContext,
     state: Account.State,
     request: Account.DepositRequest
-  ): Promise<void> {
+  ): Promise<[Account.State]> => {
     state.balance += request.amount;
-  }
+    return [state];
+  },
 
-  async withdraw(
+  withdraw: async (
     context: WriterContext,
     state: Account.State,
     request: Account.WithdrawRequest
-  ): Promise<void> {
+  ): Promise<[Account.State]> => {
     state.balance -= request.amount;
     if (state.balance < 0) {
       throw new Account.WithdrawAborted({
@@ -38,28 +39,32 @@ export class AccountServicer extends Account.Servicer {
         amount: Number(-state.balance),
       });
     }
-  }
+    return [state];
+  },
 
-  async open(
+  open: async (
     context: WriterContext,
     state: Account.State,
     request: Account.OpenRequest
-  ): Promise<void> {
+  ): Promise<[Account.State]> => {
     // Schedule infinite "interest" task.
-    await this.ref()
+    await Account.ref()
       .schedule({ when: new Date(Date.now() + 1000) })
       .interest(context);
-  }
+    return [state];
+  },
 
-  async interest(
+  interest: async (
     context: WriterContext,
     state: Account.State,
     request: Account.InterestRequest
-  ): Promise<void> {
+  ): Promise<[Account.State]> => {
     state.balance += 1;
 
-    await this.ref()
+    await Account.ref()
       .schedule({ when: new Date(Date.now() + random(1, 4) * 1000) })
       .interest(context);
-  }
-}
+
+    return [state];
+  },
+});
