@@ -2,7 +2,7 @@
 // npx tsx backend/tests/test.ts
 
 import { Application, Reboot } from "@reboot-dev/reboot";
-import sortedMap from "@reboot-dev/reboot-std/collections/sorted_map.js";
+import sortedMap from "@reboot-dev/reboot-std/collections/v1/sorted_map.js";
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { Account } from "../../api/bank/v1/account_rbt.js";
