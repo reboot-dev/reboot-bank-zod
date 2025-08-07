@@ -1,5 +1,5 @@
 import { Application } from "@reboot-dev/reboot";
-import sortedMap from "@reboot-dev/reboot-std/collections/sorted_map.js";
+import sortedMap from "@reboot-dev/reboot-std/collections/v1/sorted_map.js";
 import { Bank } from "../../api/bank/v1/bank_rbt.js";
 import { AccountServicer } from "./account.js";
 import { BankServicer } from "./bank.js";
