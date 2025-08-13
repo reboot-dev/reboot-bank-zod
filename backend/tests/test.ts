@@ -7,8 +7,10 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { Account } from "../../api/bank/v1/account_rbt.js";
 import { Bank } from "../../api/bank/v1/bank_rbt.js";
+import { Customer } from "../../api/bank/v1/customer_rbt.js";
 import { AccountServicer } from "../src/account.js";
 import { BankServicer } from "../src/bank.js";
+import { CustomerServicer } from "../src/customer.js";
 
 function reportErrorToUser(errorMessage: string): void {
   // This is a dummy function for use in documentation code snippets.
@@ -47,7 +49,12 @@ test("Calling Bank.SignUp", async (t) => {
     await rbt.start();
     await rbt.up(
       new Application({
-        servicers: [BankServicer, AccountServicer, ...sortedMap.servicers()],
+        servicers: [
+          BankServicer,
+          AccountServicer,
+          CustomerServicer,
+          ...sortedMap.servicers(),
+        ],
       })
     );
   });
@@ -62,8 +69,7 @@ test("Calling Bank.SignUp", async (t) => {
     const [bank] = await Bank.create(context, "bank-nodejs");
 
     const response = await bank.signUp(context, {
-      accountId: "test@reboot.dev",
-      initialDeposit: 1,
+      customerId: "test@reboot.dev",
     });
   });
 });
@@ -76,7 +82,12 @@ test("Test Bank Error Handling", async (t) => {
     await rbt.start();
     await rbt.up(
       new Application({
-        servicers: [BankServicer, AccountServicer, ...sortedMap.servicers()],
+        servicers: [
+          BankServicer,
+          AccountServicer,
+          CustomerServicer,
+          ...sortedMap.servicers(),
+        ],
       })
     );
   });
@@ -107,5 +118,80 @@ test("Test Bank Error Handling", async (t) => {
         `Expected an OverdraftError to be thrown: ${e.error.type}`
       );
     }
+  });
+});
+
+test("Transfer with Customer", async (t) => {
+  let rbt: Reboot;
+
+  // Overwrite the 'open' method to not apply interest to make the test
+  // be consistent.
+  class AccountServicerNoInterest extends AccountServicer {
+    async open(context, state, request) {}
+  }
+
+  t.before(async () => {
+    rbt = new Reboot();
+    await rbt.start();
+    await rbt.up(
+      new Application({
+        servicers: [
+          BankServicer,
+          AccountServicerNoInterest,
+          CustomerServicer,
+          ...sortedMap.servicers(),
+        ],
+      })
+    );
+  });
+
+  t.after(async () => {
+    await rbt.stop();
+  });
+
+  await t.test("Sign Up", async (t) => {
+    const context = rbt.createExternalContext("test");
+
+    const [bank] = await Bank.create(context, "bank-nodejs");
+
+    const CUSTOMER_ID_1 = "test@reboot.dev";
+    const CUSTOMER_ID_2 = "test2@reboot.dev";
+
+    await bank.signUp(context, {
+      customerId: CUSTOMER_ID_1,
+    });
+
+    const { accountId: accountId1 } = await Customer.ref(
+      CUSTOMER_ID_1
+    ).openAccount(context, {
+      initialDeposit: 1000,
+    });
+
+    await bank.signUp(context, {
+      customerId: CUSTOMER_ID_2,
+    });
+
+    const { accountId: accountId2 } = await Customer.ref(
+      CUSTOMER_ID_2
+    ).openAccount(context, {
+      initialDeposit: 0,
+    });
+
+    await bank.transfer(context, {
+      fromAccountId: accountId1,
+      toAccountId: accountId2,
+      amount: 1000,
+    });
+
+    const { amount: balance1 } = await Account.ref(accountId1).balance(context);
+
+    assert(balance1 === 0, "Balance of account 1 should be 0 after transfer");
+
+    const { amount: balance2 } = await Account.ref(accountId2).balance(context);
+
+    assert(
+      balance2 === 1000,
+      "Balance of account 2 should be 1000 after transfer"
+    );
   });
 });

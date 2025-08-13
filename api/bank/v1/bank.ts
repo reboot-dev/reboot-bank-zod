@@ -3,7 +3,7 @@ import { z } from "zod/v4";
 export const api = {
   Bank: {
     state: {
-      accountIdsMapId: z.string().meta({ tag: 1 }),
+      customerIdsMapId: z.string().meta({ tag: 1 }),
     },
 
     methods: {
@@ -16,10 +16,16 @@ export const api = {
       signUp: {
         kind: "transaction",
         request: {
-          accountId: z.string().meta({ tag: 1 }),
-          initialDeposit: z.number().meta({ tag: 2 }),
+          customerId: z.string().meta({ tag: 1 }),
         },
         response: z.void(),
+      },
+      allCustomerIds: {
+        kind: "reader",
+        request: {},
+        response: {
+          customerIds: z.array(z.string()).meta({ tag: 1 }),
+        },
       },
       transfer: {
         kind: "transaction",
@@ -30,6 +36,14 @@ export const api = {
         },
         response: z.void(),
       },
+      openCustomerAccount: {
+        kind: "transaction",
+        request: {
+          initialDeposit: z.number().meta({ tag: 1 }),
+          customerId: z.string().meta({ tag: 2 }),
+        },
+        response: z.void(),
+      },
       accountBalances: {
         kind: "reader",
         request: {},
@@ -37,8 +51,15 @@ export const api = {
           balances: z
             .array(
               z.object({
-                accountId: z.string().meta({ tag: 1 }),
-                balance: z.number().meta({ tag: 2 }),
+                customerId: z.string().meta({ tag: 1 }),
+                accounts: z
+                  .array(
+                    z.object({
+                      accountId: z.string().meta({ tag: 1 }),
+                      balance: z.number().meta({ tag: 2 }),
+                    })
+                  )
+                  .meta({ tag: 2 }),
               })
             )
             .default(() => [])
