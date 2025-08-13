@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { uuidv7 } from "uuidv7";
 import { Account } from "../../api/bank/v1/account_rbt.js";
 import { Bank } from "../../api/bank/v1/bank_rbt.js";
+import { Customer } from "../../api/bank/v1/customer_rbt.js";
 
 export const BankServicer = Bank.servicer({
   authorizer: () => {
@@ -15,9 +16,11 @@ export const BankServicer = Bank.servicer({
     state: Bank.State,
     request: Bank.CreateRequest
   ): Promise<[Bank.State]> => {
-    state.accountIdsMapId = uuidv4();
+    state.customerIdsMapId = uuidv4();
 
-    await SortedMap.ref(state.accountIdsMapId).insert(context, { entries: {} });
+    await SortedMap.ref(state.customerIdsMapId).insert(context, {
+      entries: {},
+    });
 
     return [state];
   },
@@ -28,17 +31,17 @@ export const BankServicer = Bank.servicer({
     request: Bank.AccountBalancesRequest
   ): Promise<Bank.AccountBalancesResponse> => {
     // Get the first "page" of account IDs (32 entries).
-    const accountIdsMap = SortedMap.ref(state.accountIdsMapId);
+    const customerIdsMap = SortedMap.ref(state.customerIdsMapId);
 
-    const accountIds = (
-      await accountIdsMap.range(context, { limit: 32 })
+    const customerIds = (
+      await customerIdsMap.range(context, { limit: 32 })
     ).entries.map(({ value }) => new TextDecoder().decode(value));
 
     return {
       balances: await Promise.all(
-        accountIds.map(async (accountId) => {
-          const { amount } = await Account.ref(accountId).balance(context);
-          return { accountId, balance: amount };
+        customerIds.map(async (customerId) => {
+          const balance = await Customer.ref(customerId).balances(context);
+          return { customerId, accounts: balance.balances };
         })
       ),
     };
@@ -47,21 +50,33 @@ export const BankServicer = Bank.servicer({
   signUp: async (
     context: TransactionContext,
     state: Bank.State,
-    { accountId, initialDeposit }: Bank.SignUpRequest
+    { customerId }: Bank.SignUpRequest
   ): Promise<[Bank.State]> => {
-    const [account] = await Account.open(context, accountId, {});
-
-    await account.deposit(context, { amount: initialDeposit });
+    await Customer.signUp(context, customerId);
 
     // Save the account ID to our _distributed_ map using a UUIDv7
     // to get a "timestamp" based ordering.
-    await SortedMap.ref(state.accountIdsMapId).insert(context, {
+    await SortedMap.ref(state.customerIdsMapId).insert(context, {
       entries: {
-        [uuidv7()]: new TextEncoder().encode(accountId),
+        [uuidv7()]: new TextEncoder().encode(customerId),
       },
     });
 
     return [state];
+  },
+
+  allCustomerIds: async (
+    context: ReaderContext,
+    state: Bank.State,
+    { customerId }: Bank.AllCustomerIdsRequest
+  ): Promise<Bank.AllCustomerIdsResponse> => {
+    const customerIdsMap = SortedMap.ref(state.customerIdsMapId);
+
+    const customerIds = (
+      await customerIdsMap.range(context, { limit: 32 })
+    ).entries.map(({ value }) => new TextDecoder().decode(value));
+
+    return { customerIds };
   },
 
   transfer: async (
@@ -72,6 +87,15 @@ export const BankServicer = Bank.servicer({
     await Account.ref(fromAccountId).withdraw(context, { amount });
     await Account.ref(toAccountId).deposit(context, { amount });
 
+    return [state];
+  },
+
+  openCustomerAccount: async (
+    context: TransactionContext,
+    state: Bank.State,
+    { initialDeposit, customerId }: Bank.OpenCustomerAccountRequest
+  ): Promise<[Bank.State]> => {
+    await Customer.ref(customerId).openAccount(context, { initialDeposit });
     return [state];
   },
 });
