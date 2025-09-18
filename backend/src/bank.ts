@@ -68,7 +68,7 @@ export const BankServicer = Bank.servicer({
   allCustomerIds: async (
     context: ReaderContext,
     state: Bank.State,
-    { customerId }: Bank.AllCustomerIdsRequest
+    request: Bank.AllCustomerIdsRequest
   ): Promise<Bank.AllCustomerIdsResponse> => {
     const customerIdsMap = SortedMap.ref(state.customerIdsMapId);
 
