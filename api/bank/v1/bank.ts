@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 
-import { type API, reader, transaction } from "@reboot-dev/reboot-api";
+import { reader, transaction } from "@reboot-dev/reboot-api";
 
 export const Bank = {
   state: {
@@ -63,6 +63,6 @@ export const Bank = {
   },
 };
 
-export const api: API = {
+export const api = {
   Bank,
 };
