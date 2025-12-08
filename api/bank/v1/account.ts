@@ -1,4 +1,4 @@
-import { type API, reader, writer } from "@reboot-dev/reboot-api";
+import { reader, writer } from "@reboot-dev/reboot-api";
 import { z } from "zod/v4";
 
 export const Account = {
@@ -44,6 +44,6 @@ export const Account = {
   },
 };
 
-export const api: API = {
+export const api = {
   Account,
 };

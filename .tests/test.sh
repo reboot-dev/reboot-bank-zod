@@ -41,6 +41,9 @@ RBT_FLAGS="--state-directory=$(mktemp -d)"
 
 npx rbt $RBT_FLAGS generate
 
+# Run the type check only.
+npx tsc
+
 npx tsx backend/tests/test.ts
 
 if [ -n "${EXPECTED_RBT_DEV_OUTPUT_FILE:-}" ]; then
