@@ -1,7 +1,6 @@
 import { ReaderContext, TransactionContext, allow } from "@reboot-dev/reboot";
 import { SortedMap } from "@reboot-dev/reboot-std/collections/v1/sorted_map.js";
-import { v4 as uuidv4 } from "uuid";
-import { uuidv7 } from "uuidv7";
+import { v4 as uuidv4, v7 as uuidv7 } from "uuid";
 import { Account } from "../../api/bank/v1/account_rbt.js";
 import { Bank } from "../../api/bank/v1/bank_rbt.js";
 import { Customer } from "../../api/bank/v1/customer_rbt.js";
